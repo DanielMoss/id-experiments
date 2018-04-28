@@ -13,7 +13,8 @@ object ID {
 
   implicit def monoIDDecoder[T : HasMonoID
                                : HasMonoXorDualID
-                               : Decoder : TypeTag]: Decoder[ID[T]] =
+                               : Decoder
+                               : TypeTag]: Decoder[ID[T]] =
     upcastDecoder[MonoID[T], T]
 
   implicit def dualIDDecoder[T : HasDualID
