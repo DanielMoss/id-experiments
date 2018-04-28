@@ -22,12 +22,13 @@ object VehicleType extends Enum[VehicleType] {
       Left(s"Deserialised $s when expecting a $className")
   }
 
-  implicit val idEncoder: Encoder[ID[VehicleType]] = {
-    case t: ID[Car.type @unchecked]   if t.conformsTo[ID[Car.type]]   => t.asJson
-    case t: ID[Van.type @unchecked]   if t.conformsTo[ID[Van.type]]   => t.asJson
-    case t: ID[Lorry.type @unchecked] if t.conformsTo[ID[Lorry.type]] => t.asJson
-    case t: ID[Wagon.type @unchecked] if t.conformsTo[ID[Wagon.type]] => t.asJson
-  }
+  implicit val idEncoder: Encoder[ID[VehicleType]] =
+    (a: ID[VehicleType]) => a.matching(
+      onCar   = _.asJson,
+      onVan   = _.asJson,
+      onLorry = _.asJson,
+      onWagon = _.asJson
+    )
 
   implicit val idDecoder: Decoder[ID[VehicleType]] = (c: HCursor) =>
     c.downField(ID.jsonTypeFieldName).as[VehicleType].flatMap {
@@ -36,6 +37,19 @@ object VehicleType extends Enum[VehicleType] {
       case Lorry => Decoder[ID[Lorry.type]].apply(c)
       case Wagon => Decoder[ID[Wagon.type]].apply(c)
     }
+
+  implicit class IDOps(self: ID[VehicleType]) {
+    def matching[T](onCar: MonoID[Car.type] => T,
+                    onVan: MonoID[Van.type] => T,
+                    onLorry: DualID[Lorry.type] => T,
+                    onWagon: DualID[Wagon.type] => T): T =
+      self match {
+        case t: MonoID[Car.type @unchecked]   if t.conformsTo[ID[Car.type]]   => onCar(t)
+        case t: MonoID[Van.type @unchecked]   if t.conformsTo[ID[Van.type]]   => onVan(t)
+        case t: DualID[Lorry.type @unchecked] if t.conformsTo[ID[Lorry.type]] => onLorry(t)
+        case t: DualID[Wagon.type @unchecked] if t.conformsTo[ID[Wagon.type]] => onWagon(t)
+      }
+  }
 
   val values: immutable.IndexedSeq[VehicleType] = findValues
 
