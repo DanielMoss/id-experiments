@@ -26,6 +26,14 @@ object ID {
     Decoder[L].map(s => s: ID[T])
 
   val jsonTypeFieldName: String = "type"
+
+  def apply[T : HasMonoID
+              : HasMonoXorDualID
+              : TypeTag](raw: String): ID[T] = MonoID(raw)
+
+  def apply[T : HasDualID
+              : HasMonoXorDualID
+              : TypeTag](first: String, second: String): ID[T] = DualID(first, second)
 }
 
 sealed trait ID[+T] extends GenericMatching[ID[T]]
