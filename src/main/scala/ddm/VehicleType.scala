@@ -6,7 +6,6 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor}
 
 import scala.collection.immutable
-import scala.reflect.ClassTag
 
 sealed trait VehicleType extends EnumEntry
 
@@ -14,21 +13,25 @@ object VehicleType extends Enum[VehicleType] {
   implicit val encoder: Encoder[VehicleType] = deriveEnumerationEncoder
   implicit val decoder: Decoder[VehicleType] = deriveEnumerationDecoder
 
-  implicit def subtypeEncoder[T <: VehicleType]: Encoder[T] = encoder.contramap(t => t: VehicleType)
-  implicit def subtypeDecoder[T <: VehicleType : ClassTag]: Decoder[T] = decoder.emap {
-    case t: T => Right(t)
-    case s: VehicleType =>
-      val className = implicitly[ClassTag[T]].runtimeClass.getSimpleName
-      Left(s"Deserialised $s when expecting a $className")
+  implicit def subtypeEncoder[T <: VehicleType]: Encoder[T] =
+    encoder.contramap(t => t: VehicleType)
+
+  implicit def subtypeDecoder[T <: VehicleType : ValueOf]: Decoder[T] = {
+    val t = valueOf[T]
+    decoder.emap {
+      case `t` => Right(t)
+      case s: VehicleType => Left(s"Deserialised $s when expecting a $t")
+    }
   }
 
   implicit val idEncoder: Encoder[ID[VehicleType]] =
-    (a: ID[VehicleType]) => a.matching(
-      onCar   = _.asJson,
-      onVan   = _.asJson,
-      onLorry = _.asJson,
-      onWagon = _.asJson
-    )
+    (a: ID[VehicleType]) =>
+      a.matching(
+        onCar   = _.asJson,
+        onVan   = _.asJson,
+        onLorry = _.asJson,
+        onWagon = _.asJson
+      )
 
   implicit val idDecoder: Decoder[ID[VehicleType]] = (c: HCursor) =>
     c.downField(ID.jsonTypeFieldName).as[VehicleType].flatMap {
